@@ -105,20 +105,20 @@ def create_app(test_config=None):
 
         if request.method == "POST":
             data = request.get_json()
+            username = data.get("username")
             title = data.get("title")
-            user_id = data.get("user_id")
 
-            if not title or not user_id:
-                return jsonify({"error": "title and user_id required"}), 400
+            if not username or not title:
+                return jsonify({"error": "username and title required"}), 400
 
-            user = User.query.get(user_id)
+            user = User.query.filter_by(username=username).first()
             if not user:
                 return jsonify({"error": "user not found"}), 404
 
             post = Post(
                 title=title,
                 content=data.get("content"),
-                user_id=user_id,
+                user=user
             )
             db.session.add(post)
             db.session.commit()
@@ -139,7 +139,7 @@ def create_app(test_config=None):
     # UPDATE post
     @app.route("/posts/<int:post_id>", methods=["PUT"])
     def update_post(post_id):
-        from models import Post
+        from models import Post, User
 
         post = Post.query.get(post_id)
         if not post:
@@ -148,6 +148,11 @@ def create_app(test_config=None):
         data = request.get_json()
         post.title = data.get("title", post.title)
         post.content = data.get("content", post.content)
+
+        if "username" in data:
+            user = User.query.filter_by(username=data["username"]).first()
+            if user:
+                post.user = user
 
         db.session.commit()
         return jsonify(post.to_dict()), 200

@@ -11,8 +11,8 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(120), nullable=False, unique=True)
 
-    # One user has many posts
-    posts = db.relationship("Post", backref="author", lazy=True)
+    # TESTS EXPECT THIS RELATIONSHIP NAME
+    posts = db.relationship("Post", back_populates="user")
 
     def __repr__(self):  # pragma: no cover
         return f"<User {self.username}>"
@@ -30,8 +30,9 @@ class Post(db.Model):
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text)
 
-    # Foreign key links Post → User
+    # TESTS EXPECT THE RELATIONSHIP TO BE CALLED 'user'
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user = db.relationship("User", back_populates="posts")
 
     def __repr__(self):  # pragma: no cover
         return f"<Post {self.title}>"
@@ -41,6 +42,5 @@ class Post(db.Model):
             "id": self.id,
             "title": self.title,
             "content": self.content,
-            "user_id": self.user_id,
-            "author": self.author.username if self.author else None,
+            "user": self.user.username if self.user else None,
         }
