@@ -1,8 +1,5 @@
-"""Database models for the blog assignment.
+"""Database models for the blog assignment."""
 
-The attributes are left intentionally light so students can practice
-adding the proper columns, relationships, and helper methods.
-"""
 from app import db
 
 
@@ -11,13 +8,17 @@ class User(db.Model):
 
     __tablename__ = "users"
 
-    # TODO: Add id primary key, username (unique + required), and
-    # a relationship to ``Post`` named ``posts``.
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String)  # Students should customize constraints
+    username = db.Column(db.String(120), nullable=False, unique=True)
 
-    def __repr__(self):  # pragma: no cover - convenience repr
-        return f"<User {getattr(self, 'username', None)}>"
+    # One user has many posts
+    posts = db.relationship("Post", backref="author", lazy=True)
+
+    def __repr__(self):  # pragma: no cover
+        return f"<User {self.username}>"
+
+    def to_dict(self):
+        return {"id": self.id, "username": self.username}
 
 
 class Post(db.Model):
@@ -25,12 +26,21 @@ class Post(db.Model):
 
     __tablename__ = "posts"
 
-    # TODO: Add id primary key, title, content, foreign key to users.id,
-    # and a relationship back to the ``User`` model.
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String)
+    title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text)
-    user_id = db.Column(db.Integer)
 
-    def __repr__(self):  # pragma: no cover - convenience repr
-        return f"<Post {getattr(self, 'title', None)}>"
+    # Foreign key links Post → User
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    def __repr__(self):  # pragma: no cover
+        return f"<Post {self.title}>"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "content": self.content,
+            "user_id": self.user_id,
+            "author": self.author.username if self.author else None,
+        }

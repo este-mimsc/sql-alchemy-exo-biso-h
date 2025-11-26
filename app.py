@@ -5,71 +5,171 @@ from flask_sqlalchemy import SQLAlchemy
 
 from config import Config
 
-# These extension instances are shared across the app and models
-# so that SQLAlchemy can bind to the application context when the
-# factory runs.
+# Shared database instances
 db = SQLAlchemy()
 migrate = Migrate()
 
 
 def create_app(test_config=None):
-    """Application factory used by Flask and the tests.
-
-    The optional ``test_config`` dictionary can override settings such as
-    the database URL to keep student tests isolated.
-    """
-
+    """Application factory used by Flask and the tests."""
     app = Flask(__name__)
     app.config.from_object(Config)
+
     if test_config:
         app.config.update(test_config)
 
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # Import models here so SQLAlchemy is aware of them before migrations
-    # or ``create_all`` run. Students will flesh these out in ``models.py``.
+    # Import models so SQLAlchemy knows them
     import models  # noqa: F401
 
     @app.route("/")
     def index():
-        """Simple sanity check route."""
-
         return jsonify({"message": "Welcome to the Flask + SQLAlchemy assignment"})
+
+    # ---------------------------
+    # USERS ROUTES
+    # ---------------------------
 
     @app.route("/users", methods=["GET", "POST"])
     def users():
-        """List or create users.
+        from models import User
 
-        TODO: Students should query ``User`` objects, serialize them to JSON,
-        and handle incoming POST data to create new users.
-        """
+        if request.method == "GET":
+            users = User.query.all()
+            return jsonify([u.to_dict() for u in users]), 200
 
-        return (
-            jsonify({"message": "TODO: implement user listing/creation"}),
-            501,
-        )
+        if request.method == "POST":
+            data = request.get_json()
+            username = data.get("username")
+
+            if not username:
+                return jsonify({"error": "username required"}), 400
+
+            user = User(username=username)
+            db.session.add(user)
+            db.session.commit()
+            return jsonify(user.to_dict()), 201
+
+    # GET one user
+    @app.route("/users/<int:user_id>", methods=["GET"])
+    def get_user(user_id):
+        from models import User
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "user not found"}), 404
+
+        return jsonify(user.to_dict()), 200
+
+    # UPDATE user
+    @app.route("/users/<int:user_id>", methods=["PUT"])
+    def update_user(user_id):
+        from models import User
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "user not found"}), 404
+
+        data = request.get_json()
+        user.username = data.get("username", user.username)
+        db.session.commit()
+
+        return jsonify(user.to_dict()), 200
+
+    # DELETE user
+    @app.route("/users/<int:user_id>", methods=["DELETE"])
+    def delete_user(user_id):
+        from models import User
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "user not found"}), 404
+
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({"message": "User deleted"}), 200
+
+    # ---------------------------
+    # POSTS ROUTES
+    # ---------------------------
 
     @app.route("/posts", methods=["GET", "POST"])
     def posts():
-        """List or create posts.
+        from models import Post, User
 
-        TODO: Students should query ``Post`` objects, include user data, and
-        allow creating posts tied to a valid ``user_id``.
-        """
+        if request.method == "GET":
+            posts = Post.query.all()
+            return jsonify([p.to_dict() for p in posts]), 200
 
-        return (
-            jsonify({"message": "TODO: implement post listing/creation"}),
-            501,
-        )
+        if request.method == "POST":
+            data = request.get_json()
+            title = data.get("title")
+            user_id = data.get("user_id")
+
+            if not title or not user_id:
+                return jsonify({"error": "title and user_id required"}), 400
+
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({"error": "user not found"}), 404
+
+            post = Post(
+                title=title,
+                content=data.get("content"),
+                user_id=user_id,
+            )
+            db.session.add(post)
+            db.session.commit()
+
+            return jsonify(post.to_dict()), 201
+
+    # GET single post
+    @app.route("/posts/<int:post_id>", methods=["GET"])
+    def get_post(post_id):
+        from models import Post
+
+        post = Post.query.get(post_id)
+        if not post:
+            return jsonify({"error": "post not found"}), 404
+
+        return jsonify(post.to_dict()), 200
+
+    # UPDATE post
+    @app.route("/posts/<int:post_id>", methods=["PUT"])
+    def update_post(post_id):
+        from models import Post
+
+        post = Post.query.get(post_id)
+        if not post:
+            return jsonify({"error": "post not found"}), 404
+
+        data = request.get_json()
+        post.title = data.get("title", post.title)
+        post.content = data.get("content", post.content)
+
+        db.session.commit()
+        return jsonify(post.to_dict()), 200
+
+    # DELETE post
+    @app.route("/posts/<int:post_id>", methods=["DELETE"])
+    def delete_post(post_id):
+        from models import Post
+
+        post = Post.query.get(post_id)
+        if not post:
+            return jsonify({"error": "post not found"}), 404
+
+        db.session.delete(post)
+        db.session.commit()
+        return jsonify({"message": "Post deleted"}), 200
 
     return app
 
 
-# Expose a module-level application for convenience with certain tools
+# Module-level app for python app.py
 app = create_app()
 
-
 if __name__ == "__main__":
-    # Running ``python app.py`` starts the development server.
     app.run(debug=True)
