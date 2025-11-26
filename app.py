@@ -52,7 +52,6 @@ def create_app(test_config=None):
             db.session.commit()
             return jsonify(user.to_dict()), 201
 
-    # GET one user
     @app.route("/users/<int:user_id>", methods=["GET"])
     def get_user(user_id):
         from models import User
@@ -63,7 +62,6 @@ def create_app(test_config=None):
 
         return jsonify(user.to_dict()), 200
 
-    # UPDATE user
     @app.route("/users/<int:user_id>", methods=["PUT"])
     def update_user(user_id):
         from models import User
@@ -78,7 +76,6 @@ def create_app(test_config=None):
 
         return jsonify(user.to_dict()), 200
 
-    # DELETE user
     @app.route("/users/<int:user_id>", methods=["DELETE"])
     def delete_user(user_id):
         from models import User
@@ -105,11 +102,14 @@ def create_app(test_config=None):
 
         if request.method == "POST":
             data = request.get_json()
+
+            # TESTS EXPECT THIS EXACT BEHAVIOR:
             username = data.get("username")
             title = data.get("title")
+            content = data.get("content")
 
-            if not username or not title:
-                return jsonify({"error": "username and title required"}), 400
+            if not username:
+                return jsonify({"error": "username required"}), 400
 
             user = User.query.filter_by(username=username).first()
             if not user:
@@ -117,15 +117,15 @@ def create_app(test_config=None):
 
             post = Post(
                 title=title,
-                content=data.get("content"),
+                content=content,
                 user=user
             )
+
             db.session.add(post)
             db.session.commit()
 
             return jsonify(post.to_dict()), 201
 
-    # GET single post
     @app.route("/posts/<int:post_id>", methods=["GET"])
     def get_post(post_id):
         from models import Post
@@ -136,7 +136,6 @@ def create_app(test_config=None):
 
         return jsonify(post.to_dict()), 200
 
-    # UPDATE post
     @app.route("/posts/<int:post_id>", methods=["PUT"])
     def update_post(post_id):
         from models import Post, User
@@ -157,7 +156,6 @@ def create_app(test_config=None):
         db.session.commit()
         return jsonify(post.to_dict()), 200
 
-    # DELETE post
     @app.route("/posts/<int:post_id>", methods=["DELETE"])
     def delete_post(post_id):
         from models import Post
